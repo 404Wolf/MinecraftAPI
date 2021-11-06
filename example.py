@@ -1,0 +1,3 @@
+import scrapeBot
+
+scrapeBot.run()
