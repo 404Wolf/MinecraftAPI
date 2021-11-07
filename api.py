@@ -38,7 +38,7 @@ async def ratelimitReset():
 	global ratelimit
 	while True:
 		ratelimit = 0
-		await asyncio.sleep(5)
+		await asyncio.sleep(10)
 
 async def lookup(target):
 	global channels
@@ -107,7 +107,7 @@ async def api():
 
 		if (target not in cache) or (cache[target]["recheck"] < time()):
 			try:
-				if ratelimit > 20:
+				if ratelimit > 15:
 					return web.json_response({"target":target,"error":"Ratelimit hit! Please try again in 20-30 seconds."})
 				data = await asyncio.wait_for(lookup(target),3)
 				cache[target] = {}
