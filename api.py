@@ -106,14 +106,17 @@ async def api():
 		target = target.lower()
 
 		if (target not in cache) or (cache[target]["recheck"] < time()):
-			if ratelimit > 5:
-				return web.json_response({"target":target,"error":"Ratelimit hit! Please try again in 20-30 seconds."})
-			data = await asyncio.wait_for(lookup(target),3)
-			cache[target] = {}
-			cache[target]["data"] = data
-			cache[target]["recheck"] = time()+60*10
-			ratelimit += 1
-			return web.json_response(data)
+			try:
+				if ratelimit > 20:
+					return web.json_response({"target":target,"error":"Ratelimit hit! Please try again in 20-30 seconds."})
+				data = await asyncio.wait_for(lookup(target),3)
+				cache[target] = {}
+				cache[target]["data"] = data
+				cache[target]["recheck"] = time()+60*10
+				ratelimit += 1
+				return web.json_response(data)
+			except:
+				return web.Response(text="Make sure to include a target!\nYou can pass it in the query string (?target=name), or as a header ({\"target\":\"name\"})")
 
 		return web.json_response(cache[target]["data"])
 
