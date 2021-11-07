@@ -4,7 +4,7 @@ import sys
 from time import time
 from random import sample
 
-count = 15
+count = 25
 start = time()
 
 print()
