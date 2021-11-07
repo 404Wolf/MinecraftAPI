@@ -30,7 +30,7 @@ async def lookup(target):
 			await channel.send("https://namemc.com/search?q="+target+"&c="+tag)
 			while True:
 				try:
-					target = target.lower()
+					target = target
 					data = {"target":target}
 					async for message in channel.history(limit=1):
 						messageFromHist = message
@@ -49,6 +49,7 @@ async def lookup(target):
 					elif "Invalid" or "Too Short" in raw:
 						data["status"] = "invalid"
 						data["droptime"] = None
+					break
 				except IndexError:
 					await asyncio.sleep(.05)
 		finally:
@@ -71,21 +72,16 @@ async def api():
 		else:
 			return web.Response(text="Make sure to include a target!\nYou can pass it in the query string (?target=name), or as a header ({\"target\":\"name\"})")
 
-		check = False
-		if target in cache:
-			if cache[target]["recheck"] < time():
-				check = True
-		else:
-			check = True
+		target = target.lower()
 
-		if check:
-			while True:
-				data = str(await asyncio.wait_for(lookup(target),4))
-				if len(data) > 16:
-					cache[target.lower()] = {"data":data,"recheck":time()+60*5}
-					return web.json_response(data)
-		else:
-			return web.json_response(json.dumps(cache[target]["data"],indent=3))
+		if (target not in cache) or (cache[target]["recheck"] < time()):
+			data = await lookup(target)
+			cache[target] = {}
+			cache[target]["data"] = data
+			cache[target]["recheck"] = time()+60*5
+			return web.json_response(data)
+
+		return web.json_response(cache[target]["data"],indent=3)
 
 	async def startServer():
 		app = web.Application()

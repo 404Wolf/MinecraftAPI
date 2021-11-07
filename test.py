@@ -14,7 +14,7 @@ async def main():
 
 	async with aiohttp.ClientSession() as session:
 		tasks = []
-		for x in range(3):
+		for x in range(50):
 			tasks.append(asyncio.ensure_future(spam(session)))
 		await asyncio.gather(*tasks)
 
