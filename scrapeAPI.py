@@ -34,7 +34,11 @@ async def lookup(target):
 					messageFromHist = message
 				raw = messageFromHist.embeds[0].description
 				data["searches"] = int(raw[raw.find("Searches: "):].replace("Searches: ","").replace(" / month",""))
-				if "Unavailable" in raw:
+				if "Availability" in raw:
+					droptime = mktime(datetime.strptime(raw[:raw.find("Z,")].replace("Time of Availability: ",""), "%Y-%m-%dT%H:%M:%S").timetuple())
+					data["status"] = "dropping"
+					data["droptime"] = droptime
+				elif "Unavailable" in raw:
 					data["status"] = "unavailable"
 					data["droptime"] = None
 				elif "Available*" in raw:
@@ -43,10 +47,6 @@ async def lookup(target):
 				elif "Invalid" or "Too Short" in raw:
 					data["status"] = "invalid"
 					data["droptime"] = None
-				else:
-					droptime = mktime(datetime.strptime(raw[:raw.find("Z,")].replace("Time of Availability: ",""), "%Y-%m-%dT%H:%M:%S").timetuple())
-					data["status"] = "dropping"
-					data["droptime"] = droptime
 				return data
 			except IndexError:
 				await asyncio.sleep(.1)
@@ -88,7 +88,7 @@ async def api():
 		app.add_routes(routes)
 		runner = web.AppRunner(app)
 		await runner.setup()
-		site = web.TCPSite(runner,host="0.0.0.0",port=5000)
+		site = web.TCPSite(runner,port=5000)
 		await site.start()
 		print("API has booted on "+socket.gethostbyname(socket.gethostname())+":5000")
 
