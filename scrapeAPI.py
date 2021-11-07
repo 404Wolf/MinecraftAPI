@@ -4,14 +4,15 @@ import discord
 import sys
 import json
 from random import randint
-from time import mktime
+from time import mktime,time
 from datetime import datetime
+import socket
 
 with open("config.json") as configFile:
 	config = json.load(configFile)
 
 client = discord.Client()
-cachedChecks = {}
+cache = {}
 responded = False
 
 @client.event
@@ -23,28 +24,34 @@ async def on_ready():
 
 async def lookup(target):
 	tag = str(randint(int("1"*20),int("9"*20)))
-	channel = client.get_channel(config['channel'])
-	await channel.send("https://namemc.com/search?q="+target+"&c="+tag)
-	while True:
-		try:
-			data = {"target":target}
-			async for message in channel.history(limit=1):
-				messageFromHist = message
-			raw = messageFromHist.embeds[0].description
-			data["searches"] = int(raw[raw.find("Searches: "):].replace("Searches: ","").replace(" / month",""))
-			if "Unavailable" in raw:
-				data["status"] = "unavailable"
-				data["droptime"] = None
-			elif "Available*" in raw:
-				data["status"] = "available"
-				data["droptime"] = None
-			else:
-				droptime = mktime(datetime.strptime(raw[:raw.find("Z,")].replace("Time of Availability: ",""), "%Y-%m-%dT%H:%M:%S").timetuple())
-				data["status"] = "dropping"
-				data["droptime"] = droptime
-			return data
-		except IndexError:
-			await asyncio.sleep(.1)
+	channel = await client.get_guild(config["server"]).create_text_channel(target)
+	try:
+		await channel.send("https://namemc.com/search?q="+target+"&c="+tag)
+		while True:
+			try:
+				data = {"target":target}
+				async for message in channel.history(limit=1):
+					messageFromHist = message
+				raw = messageFromHist.embeds[0].description
+				data["searches"] = int(raw[raw.find("Searches: "):].replace("Searches: ","").replace(" / month",""))
+				if "Unavailable" in raw:
+					data["status"] = "unavailable"
+					data["droptime"] = None
+				elif "Available*" in raw:
+					data["status"] = "available"
+					data["droptime"] = None
+				elif "Invalid" or "Too Short" in raw:
+					data["status"] = "invalid"
+					data["droptime"] = None
+				else:
+					droptime = mktime(datetime.strptime(raw[:raw.find("Z,")].replace("Time of Availability: ",""), "%Y-%m-%dT%H:%M:%S").timetuple())
+					data["status"] = "dropping"
+					data["droptime"] = droptime
+				return data
+			except IndexError:
+				await asyncio.sleep(.1)
+	finally:
+		await channel.delete()
 
 async def api():
 	routes = web.RouteTableDef()
@@ -61,18 +68,20 @@ async def api():
 			target = request.query_string.replace("target=","")
 
 		check = False
-		if target in data:
-			if target["recheck"] < time():
+		if target in cache:
+			if cache[target]["recheck"] < time():
 				check = True
 		else:
 			check = True
 
 		if check:
-			data = str(await lookup(target))
-			cachedChecks[target] = {"data":data,"recheck":time()+10}
-			return web.Response(text=data)
+			while True:
+				data = str(await asyncio.wait_for(lookup(target),3))
+				if len(data) > 10:
+					cache[target] = {"data":data,"recheck":time()+60*5}
+					return web.Response(text=data)
 		else:
-			return cachedChecks[target]
+			return web.Response(text=cache[target]["data"])
 
 	async def startServer():
 		app = web.Application()
@@ -81,7 +90,7 @@ async def api():
 		await runner.setup()
 		site = web.TCPSite(runner,host="0.0.0.0",port=5000)
 		await site.start()
-		print("API has booted")
+		print("API has booted on "+socket.gethostbyname(socket.gethostname())+":5000")
 
 	asyncio.create_task(startServer())
 
