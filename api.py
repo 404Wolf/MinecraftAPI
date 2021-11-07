@@ -4,60 +4,32 @@ import discord
 import sys
 import json
 from random import randint,choice
-from time import mktime,time,sleep
+from time import mktime,time
 from datetime import datetime
 import socket
+import logging
 
 with open("config.json") as configFile:
 	config = json.load(configFile)
 
-client = discord.Client()
+clients = list(discord.Client() for i in range(len(config['tokens'])))
 cache = {}
-current = 0
-ratelimit = 0
-
-@client.event
-async def on_ready():
-	global channels
-	print("Bot has authed")
-	game = discord.Game("Scraping NameMC")
-	await client.change_presence(status=discord.Status.online, activity=game)
-	asyncio.create_task(api())
-	asyncio.create_task(ratelimitReset())
-	channels = []
-	guild = client.get_guild(config['server'])
-	for channel in guild.text_channels:
-		channels.append(channel)
-	if len(channels) != 100:
-		for channel in channels:
-			await channel.delete()
-		for i in range(100):
-			channels.append(await client.get_guild(config["server"]).create_text_channel("scraper-"+str(i+1)))
-
-async def ratelimitReset():
-	global ratelimit
-	while True:
-		ratelimit = 0
-		await asyncio.sleep(10)
 
 async def lookup(target):
 	global channels
-	global current
 	data = ""
 	while len(str(data)) < 10:
-		try:
-			channel = channels[current]
-		except IndexError:
-			current = 0
-		finally:
-			current += 1
+		channel = choice(channels)
 		async def send():
 			await channel.send("https://namemc.com/search?q="+target+"&c="+str(randint(int("1"*20),int("9"*20))))
 		attempts = 0
 		while True:
 			try:
 				if (attempts == 0) or ((attempts >= 4) and attempts % 4 == 0):
-					await send()
+					try:
+						await asyncio.wait_for(send(),4)
+					except:
+						pass
 				target = target
 				data = {"target":target}
 				async for message in channel.history(limit=1):
@@ -94,29 +66,19 @@ async def api():
 
 	@routes.get("/lookup")
 	async def api_lookup(request):
-		global ratelimit
-
 		try:
 			target = request.headers["target"]
 		except KeyError:
 			target = request.query_string.replace("target=","")
-		else:
-			return web.Response(text="Make sure to include a target!\nYou can pass it in the query string (?target=name), or as a header ({\"target\":\"name\"})")
 
 		target = target.lower()
 
 		if (target not in cache) or (cache[target]["recheck"] < time()):
-			try:
-				if ratelimit > 15:
-					return web.json_response({"target":target,"error":"Ratelimit hit! Please try again in 20-30 seconds."})
-				data = await asyncio.wait_for(lookup(target),3)
-				cache[target] = {}
-				cache[target]["data"] = data
-				cache[target]["recheck"] = time()+60*10
-				ratelimit += 1
-				return web.json_response(data)
-			except:
-				return web.Response(text="Make sure to include a target!\nYou can pass it in the query string (?target=name), or as a header ({\"target\":\"name\"})")
+			data = await lookup(target)
+			cache[target] = {}
+			cache[target]["data"] = data
+			cache[target]["recheck"] = time()+60*10
+			return web.json_response(data)
 
 		return web.json_response(cache[target]["data"])
 
@@ -132,9 +94,53 @@ async def api():
 	asyncio.create_task(startServer())
 
 	while True:
-		await asyncio.sleep(0.01)
+		await asyncio.sleep(9)
+
+async def boot():
+	global channels
+
+	for client in clients:
+		asyncio.create_task(client.start(config['tokens'][clients.index(client)]))
+
+	async def getChannels():
+		channels = []
+		for client in clients:
+			guild = client.get_guild(config['server'])
+			for channel in guild.text_channels:
+				channels.append(channel)
+		return channels
+
+	while True:
+		try:
+			channels = await getChannels()
+			break
+		except AttributeError:
+			await asyncio.sleep(.1)
+
+	i = 0
+	if len(channels) != (len(clients)**2)*50:
+		print(len(channels))
+		guild = choice(clients).get_guild(config['server'])
+		for channel in guild.text_channels:
+			await channel.delete()
+		for client in clients:
+			guild = client.get_guild(config['server'])
+			for _ in range(50):
+				await guild.create_text_channel("scraper-"+str(i+1))
+				i += 1
+
+	channels = await getChannels()
+
+	for client in clients:
+		await client.change_presence(status=discord.Status.online, activity=discord.Game("Scraping NameMC"))
+
+	asyncio.create_task(api())
+	logging.basicConfig(level=logging.INFO)
+
+	while True:
+		await asyncio.sleep(9)
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-client.run(config['token'])
+asyncio.run(boot())
