@@ -3,14 +3,16 @@ from aiohttp import web
 import discord
 import sys
 import json
+from random import randint
+from time import mktime
+from datetime import datetime
 
 with open("config.json") as configFile:
 	config = json.load(configFile)
 
-with open("chats.json") as chatsFile:
-	chats = json.load(chatsFile)
-
 client = discord.Client()
+cachedChecks = {}
+responded = False
 
 @client.event
 async def on_ready():
@@ -19,13 +21,58 @@ async def on_ready():
 	await client.change_presence(status=discord.Status.online, activity=game)
 	asyncio.create_task(api())
 
+async def lookup(target):
+	tag = str(randint(int("1"*20),int("9"*20)))
+	channel = client.get_channel(config['channel'])
+	await channel.send("https://namemc.com/search?q="+target+"&c="+tag)
+	while True:
+		try:
+			data = {"target":target}
+			async for message in channel.history(limit=1):
+				messageFromHist = message
+			raw = messageFromHist.embeds[0].description
+			data["searches"] = int(raw[raw.find("Searches: "):].replace("Searches: ","").replace(" / month",""))
+			if "Unavailable" in raw:
+				data["status"] = "unavailable"
+				data["droptime"] = None
+			elif "Available*" in raw:
+				data["status"] = "available"
+				data["droptime"] = None
+			else:
+				droptime = mktime(datetime.strptime(raw[:raw.find("Z,")].replace("Time of Availability: ",""), "%Y-%m-%dT%H:%M:%S").timetuple())
+				data["status"] = "dropping"
+				data["droptime"] = droptime
+			return data
+		except IndexError:
+			await asyncio.sleep(.1)
+
 async def api():
 	routes = web.RouteTableDef()
 
 	@routes.get('/')
-	async def ping(request):
-		print(request.host)
+	async def api_ping(request):
 		return web.Response(text="API for scraping NameMC data")
+
+	@routes.get("/lookup")
+	async def api_lookup(request):
+		try:
+			target = request.headers["target"]
+		except KeyError:
+			target = request.query_string.replace("target=","")
+
+		check = False
+		if target in data:
+			if target["recheck"] < time():
+				check = True
+		else:
+			check = True
+
+		if check:
+			data = str(await lookup(target))
+			cachedChecks[target] = {"data":data,"recheck":time()+10}
+			return web.Response(text=data)
+		else:
+			return cachedChecks[target]
 
 	async def startServer():
 		app = web.Application()
