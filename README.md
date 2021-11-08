@@ -9,7 +9,7 @@ I've decided to open source this project, mostly because currently, there's lots
 which either cost lots of money, or are public apis which have frequent downtime. I'm not hosting this api publically,
 but you can! Feel free to fork, or share ideas.
 
-Enjoy! -- To see how it works, you can follow the below guide:
+Enjoy! To see how it works, you can follow the below guide:
 
 
 ### To set up:
@@ -24,7 +24,7 @@ Enjoy! -- To see how it works, you can follow the below guide:
 1. In the `config.json` file, change the format to `{"token":"token_you_copied_earlier","server":server_id}`.
 1. In file explorer, click the directory address, and type "cmd" into the address. A new console window should open.
 1. Double click `"dependencies.sh"` to install needed dependencies for the api to run.
-3. Assuming python is installed, type "python api.py" to run the script. If python isn't installed, google how to install it.
-4. Open a new tab in your browser, and go to "http://localhost:5000/lookup?target=test." The api is now working.
+1. Assuming python is installed, type "python api.py" to run the script. If python isn't installed, google how to install it.
+1. Open a new tab in your browser, and go to "http://localhost:5000/lookup?target=test." The api is now working.
 
-### If you have any questions, I can be reached at @Twilak#7765. Enjoy!
+### If you have any questions, I can be reached at `@Twilak#7765`. Enjoy!
