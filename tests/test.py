@@ -10,7 +10,7 @@ import sys
 from time import time
 from random import sample
 
-count = 10 #how many reqs to send
+count = int(input("How many reqs to send? ")) #how many reqs to send
 start = time() #record start time
 
 print()

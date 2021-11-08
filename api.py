@@ -93,8 +93,13 @@ async def lookup(target):
 
 		#send message to the channel, which will trigger discord to load an embed
 		async def send():
+			toSend = ""
+			for x in range(3):
+				toSend += (("https://namemc.com/search?q="+target+"&c="+str(randint(int("1"*20),int("9"*20))))+"\n")
+			if len(toSend) > 2000:
+				await channel.send("https://namemc.com/search?q=Error_Name_Is_Too_Long_To_Check")
 			#note that we add a "&c=<random_number>" to the link, so discord doesn't use a cached embed, and instead treats it as a new link
-			await channel.send("https://namemc.com/search?q="+target+"&c="+str(randint(int("1"*20),int("9"*20))))
+			await channel.send(toSend)
 
 		"""
 		Sometimes (randomlly) an embed won't generate, no matter how long we wait.
@@ -180,7 +185,7 @@ async def api():
 				try:
 					#attempt to fetch the data for the name
 					#try to fetch the data, or retry if it takes too long
-					data = await asyncio.wait_for(lookup(target),2.25)
+					data = await asyncio.wait_for(lookup(target),1.6)
 					break
 				except:
 					pass #if it times out, retry
