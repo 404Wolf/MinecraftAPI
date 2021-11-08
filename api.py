@@ -176,9 +176,14 @@ async def api():
 			if ratelimit > 20: #if ratelimited, cancel their request, and respond that the ratelimit has been hit
 				return web.json_response({"target":target,"error":"Ratelimit hit!\nPlease try again 30-60 seconds."})
 
-			#attempt to fetch the data for the name
-			#try to fetch the data, but ensure it doesn't take over 3 seconds (return an error code if it does)
-			data = await asyncio.wait_for(lookup(target),3)
+			while True: #keep trying to lookup name until it works
+				try:
+					#attempt to fetch the data for the name
+					#try to fetch the data, or retry if it takes too long
+					data = await asyncio.wait_for(lookup(target),.85)
+					break
+				except:
+					pass #if it times out, retry
 
 			#cache the name
 			cache[target] = {} #create entry in cache
