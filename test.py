@@ -4,14 +4,14 @@ import sys
 from time import time
 from random import sample
 
-count = 25
+count = 10
 start = time()
 
 print()
 async def main():
 	async def spam(session):
 		target = "".join(sample("abcdefghijklmnopqrstuvwxyz"*26,3))
-		async with session.get("http://45.63.18.200:5000/lookup?target="+target) as resp:
+		async with session.get("http://192.168.1.152:5000/lookup?target="+target) as resp:
 			print(await resp.json())
 
 	async with aiohttp.ClientSession() as session:
