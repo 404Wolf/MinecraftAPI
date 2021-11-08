@@ -180,7 +180,7 @@ async def api():
 				try:
 					#attempt to fetch the data for the name
 					#try to fetch the data, or retry if it takes too long
-					data = await asyncio.wait_for(lookup(target),.85)
+					data = await asyncio.wait_for(lookup(target),1)
 					break
 				except:
 					pass #if it times out, retry
