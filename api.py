@@ -1,5 +1,6 @@
 import asyncio #for async code
 from aiohttp import web #for async api
+import aiohttp #for async web requests
 import discord #for discord bot to grab namemc info
 import sys #to check if user is using windows, for asyncio event policy
 import json #for json loading/dumping
@@ -7,6 +8,7 @@ from random import randint #to generate random code for input string
 from time import mktime,time #for converting string time to unix time, and getting current time
 from datetime import datetime #for converting string time to unix time
 import socket #for getting the current machine's ip (to log the ip that the API is running on)
+import base64 #decode mojang texture info
 
 """
 Load in the config file
@@ -20,51 +22,69 @@ Set the global variables
 client = discord.Client() #create discord client object
 cache = {} #empty dict which cached names' data will be stored in
 current = 0 #current chat number to use (resets after reaching 100)
-ratelimit = 0 #number of requests sent within ratelimit period
 
 @client.event
 async def on_ready():
+	try:
+		"""
+		Runs after the bot finishes authing, begins the api tasks,
+		and creates needed channels for the bot to run if they do not already exist.
+		"""
+
+		global channels #list where all channels will be stored
+		global session #for aiohttp session requests
+
+		print("Bot has authed") #announce that the bot has finished authing
+
+		#change the bot's status to "Scraping NameMC"
+		game = discord.Game("Scraping NameMC")
+		await client.change_presence(status=discord.Status.online, activity=game)
+
+		asyncio.create_task(api()) #begin the api (as a background task)
+
+		channels = [] #define the channels variable to be a list
+		guild = client.get_guild(config['server']) #guild = server; get guild from serverId found in config.json
+		for channel in guild.text_channels:
+			channels.append(channel) #add all the channels from the server to the channels variable
+
+		#if the server doesn't have 100 channels (the amount the bot creates during auto set-up), purge server and
+		if len(channels) != 100:
+			for channel in channels:
+				await channel.delete() #delete preexisting channels
+			for i in range(100): #create 100 new channels
+				channels.append(await client.get_guild(config["server"]).create_text_channel("scraper-"+str(i+1))) #create new ones
+
+		session = aiohttp.ClientSession() #create aiohttp client session object
+
+		while True: #keep aiohttp session active
+			await asyncio.sleep(1)
+	finally:
+		await session.close() #before terminating, make sure session gets closed
+
+async def mojang(target):
 	"""
-	Runs after the bot finishes authing, begins the api and ratelimit resetting tasks,
-	and creates needed channels for the bot to run if they do not already exist.
+	Get uuid, skin, capes, and mojang info on the target
 	"""
+	async with session.get("https://api.mojang.com/users/profiles/minecraft/"+target) as resp:
+		if resp.status != 204:  #if there is a user with that name then fetch textures and uuid
+			uuid = await resp.json() #get uuid
+			uuid = uuid["id"]
+			async with session.get("https://sessionserver.mojang.com/session/minecraft/profile/"+uuid) as resp: #get textures
+				#undecode the textures
+				textures = await resp.json()
+				textures = textures["properties"][0]["value"]
+				textures = base64.b64decode(textures)
+				textures = json.loads(textures)
+				skin = textures["textures"]["SKIN"]["url"]
+			async with session.get("https://api.mojang.com/user/profiles/"+uuid+"/names") as resp: #get name history
+				nameHist = await resp.json()
+				if len(nameHist) == 1:
+					nameHist = "prename"
+			return (uuid,skin,nameHist) #return gathered data
+		else:
+			return None #if nobody has the name, return None
 
-	global channels #list where all channels will be stored
-
-	print("Bot has authed") #announce that the bot has finished authing
-
-	#change the bot's status to "Scraping NameMC"
-	game = discord.Game("Scraping NameMC")
-	await client.change_presence(status=discord.Status.online, activity=game)
-
-	asyncio.create_task(api()) #begin the api (as a background task)
-	asyncio.create_task(ratelimitReset()) #begin the ratelimit resetting task (as a background task)
-
-	channels = [] #define the channels variable to be a list
-	guild = client.get_guild(config['server']) #guild = server; get guild from serverId found in config.json
-	for channel in guild.text_channels:
-		channels.append(channel) #add all the channels from the server to the channels variable
-
-	#if the server doesn't have 100 channels (the amount the bot creates during auto set-up), purge server and
-	if len(channels) != 100:
-		for channel in channels:
-			await channel.delete() #delete preexisting channels
-		for i in range(100): #create 100 new channels
-			channels.append(await client.get_guild(config["server"]).create_text_channel("scraper-"+str(i+1))) #create new ones
-
-async def ratelimitReset():
-	"""
-	Automatically resets the ratelimit counter (a variable named "ratelimit") every minute
-	"""
-
-	global ratelimit
-
-	#run in the background nonstop
-	while True:
-		ratelimit = 0 #reset the ratelimit counter
-		await asyncio.sleep(60) #wait a minute
-
-async def lookup(target):
+async def namemc(target):
 	"""
 	Function to look up searches + droptime/status for a username.
 	Sends a message to the "current" (a counter variable) channel, wait for discord to
@@ -148,6 +168,7 @@ async def lookup(target):
 				#if the embed string isn't ready yet/is empty or malformed, retry
 				await asyncio.sleep(.075) #wait a bit before retrying
 				attempts += 1 #increase attempts counter
+
 	return data #finally, return the organized data output
 
 async def api():
@@ -164,8 +185,6 @@ async def api():
 		Api endpoint for getting the searches/droptime (if name is dropping)/status of a name
 		"""
 
-		global ratelimit
-
 		#try to get the requested "target" from their query_string, or from their headers
 		try: #try getting from headers
 			target = request.headers["target"]
@@ -178,23 +197,36 @@ async def api():
 
 		#if the target is not in the cache, or is due for a recheck, lookup info for the name
 		if (target not in cache) or (cache[target]["recheck"] < time()):
-			if ratelimit > 20: #if ratelimited, cancel their request, and respond that the ratelimit has been hit
-				return web.json_response({"target":target,"error":"Ratelimit hit!\nPlease try again 30-60 seconds."})
+			mojangData = asyncio.create_task(mojang(target))
 
 			while True: #keep trying to lookup name until it works
 				try:
 					#attempt to fetch the data for the name
 					#try to fetch the data, or retry if it takes too long
-					data = await asyncio.wait_for(lookup(target),1.6)
+					data = await asyncio.wait_for(namemc(target),2)
 					break
 				except:
 					pass #if it times out, retry
+
+			"""
+			Add data extras
+			"""
+			data["uuid"] = None
+			data["skin"] = None
+			data["nameHist"] = None
+			try:
+				mojangData = await asyncio.wait_for(mojangData,.4)
+				if mojangData != None:
+					data["uuid"] = mojangData[0]
+					data["skin"] = mojangData[1]
+					data["nameHist"] = mojangData[2]
+			except asyncio.TimeoutError: #if api times out then don't get info for mojang
+				pass
 
 			#cache the name
 			cache[target] = {} #create entry in cache
 			cache[target]["data"] = data #set cached entry's data the looked up data
 			cache[target]["recheck"] = time()+60*10 #allow the cached output to be used for the next 10 minutes
-			ratelimit += 1 #increase rate limit counter
 
 			return web.json_response(data) #return the requested lookup from the name
 		else:
