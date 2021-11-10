@@ -36,6 +36,6 @@ Enjoy! To see how it works, you can follow the below guide:
 
 ### If you have any questions, I can be reached at `@Twilak#7765`. Enjoy!
 
-(example of speed and content API fetches)
+(example of speed and content API fetches)<br>
 ![Example of speed and content API fetches](https://i.imgur.com/72mWz27.png)
 
