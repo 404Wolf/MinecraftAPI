@@ -20,7 +20,7 @@ Enjoy! To see how it works, you can follow the below guide:
 
 
 ### To set up:
-1. Create a config.json file
+1. Create a `config.json` file, and just put empty braces in it for now (`{}`)
 1. Go to [discord's dev portal](https://discord.com/developers/applications), and create a new application. Then go to the bot page, click "create bot," copy the token, and go back to your config.json file.
 1. In the `config.json` file, add `{"token":"token_you_just_copied"}`.
 1. Go to the o2auth page, click the checkmark next to "bot," scroll down, click the checkmark next to "administrator," and copy the bot invite link that should now be generated.
