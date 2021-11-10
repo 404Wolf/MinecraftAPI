@@ -1,4 +1,4 @@
-# NameMC Scrape API
+# All-In-One Minecraft API
 
 ### This is an all-in-one Minecraft username -> data api. 
 ### It both pulls data from mojang, and NameMC, to fetch:
