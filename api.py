@@ -113,9 +113,9 @@ async def namemc(target):
 			current += 1 #increase current counter
 
 		#send message to the channel, which will trigger discord to load an embed
-		async def send():
+		async def send(repeats):
 			toSend = ""
-			for x in range(3):
+			for x in range(repeats):
 				toSend += (("https://namemc.com/search?q="+target+"&c="+str(randint(int("1"*20),int("9"*20))))+"\n")
 			if len(toSend) > 2000:
 				await channel.send("https://namemc.com/search?q=Error_Name_Is_Too_Long_To_Check")
@@ -133,7 +133,7 @@ async def namemc(target):
 		while True:
 			try:
 				if (attempts == 0) or ((attempts >= 4) and attempts % 4 == 0):
-					await send() #send message on first attempt, and then when (attempts >= 4) and (attempts % 4 == 0)
+					await send(attempts+1) #send message on first attempt, and then when (attempts >= 4) and (attempts % 4 == 0)
 
 				data = {"target":target} #create data dict. this function will return the data variable when complete
 
