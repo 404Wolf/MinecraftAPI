@@ -35,3 +35,6 @@ Enjoy! To see how it works, you can follow the below guide:
 1. Open a new tab in your browser, and go to "http://localhost:5000/lookup?target=test." The api is now working.
 
 ### If you have any questions, I can be reached at `@Twilak#7765`. Enjoy!
+
+![Example of speed and content API fetches](https://media.discordapp.net/attachments/892473305301389403/907819333860855878/unknown.png?width=645&height=643)
+
