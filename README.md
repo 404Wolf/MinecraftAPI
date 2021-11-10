@@ -36,5 +36,5 @@ Enjoy! To see how it works, you can follow the below guide:
 
 ### If you have any questions, I can be reached at `@Twilak#7765`. Enjoy!
 
-![Example of speed and content API fetches](https://media.discordapp.net/attachments/892473305301389403/907819333860855878/unknown.png?width=645&height=643)
+![Example of speed and content API fetches](https://i.imgur.com/72mWz27.png)
 
