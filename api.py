@@ -25,7 +25,8 @@ Set the global variables
 client = discord.Client()  # create discord client object
 cache = {}  # empty dict which cached names' data will be stored in
 current = 0  # current chat number to use (resets after reaching 100)
-currentRequests = 0 #current requests being handled
+currentRequests = 0  # current requests being handled
+
 
 @client.event
 async def on_ready():
@@ -245,14 +246,15 @@ async def api():
         Api endpoint for getting the searches/droptime (if name is dropping)/status of a name
         """
 
-        #tick the currrent request count being handled by 1
+        # tick the currrent request count being handled by 1
         global currentRequests
         currentRequests += 1
 
         try:
             if currentRequests > 15:
                 return web.json_response(
-                    {"Error": "Ratelimit hit! Please try again in a few seconds."},status=429
+                    {"Error": "Ratelimit hit! Please try again in a few seconds."},
+                    status=429,
                 )  # return request timed out error if too many concurrent
 
             # try to get the requested "target" from their query_string, or from their headers
@@ -280,7 +282,9 @@ async def api():
                         data = await asyncio.wait_for(namemc(target), 2)
                         break
                     except asyncio.TimeoutError:
-                        await asyncio.sleep(0.1)  # if it times out, retry after .1 seconds
+                        await asyncio.sleep(
+                            0.1
+                        )  # if it times out, retry after .1 seconds
 
                 """
                 Add data extras
@@ -299,18 +303,22 @@ async def api():
 
                 # cache the name
                 cache[target] = {}  # create entry in cache
-                cache[target]["data"] = data  # set cached entry's data the looked up data
+                cache[target][
+                    "data"
+                ] = data  # set cached entry's data the looked up data
                 cache[target]["recheck"] = (
                     time() + 60 * 10
                 )  # allow the cached output to be used for the next 10 minutes
 
-                return web.json_response(data)  # return the requested lookup from the name
+                return web.json_response(
+                    data
+                )  # return the requested lookup from the name
             else:
                 # otherwise, just return the cached output of the name
                 return web.json_response(cache[target]["data"])
-            
+
         finally:
-            currentRequests -= 1 #request has been handled
+            currentRequests -= 1  # request has been handled
 
     async def startServer():
         """
