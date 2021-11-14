@@ -58,9 +58,9 @@ async def on_ready():
 
         # if the server doesn't have 100 channels (the amount the bot creates during auto set-up), purge server and
         if len(channels) != 100:
-            channels = []
             for channel in channels:
                 await channel.delete()  # delete preexisting channels
+            channels = []
             for i in range(100):  # create 100 new channels
                 channels.append(
                     await client.get_guild(config["server"]).create_text_channel(
