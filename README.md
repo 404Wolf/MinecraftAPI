@@ -34,7 +34,7 @@ Enjoy! To see how it works, you can follow the below guide:
 1. Assuming python is installed, type "python api.py" to run the script. If python isn't installed, google how to install it.
 1. Open a new tab in your browser, and go to "http://localhost:5000/lookup?target=test." The api is now working.
 
-### If you have any questions, I can be reached at `@Twilak#1336`. Enjoy!
+### If you have any questions, I can be reached at `Wolf#1452`.
 
 (example of speed and content API fetches)<br>
 ![Example of speed and content API fetches](https://i.imgur.com/72mWz27.png)
